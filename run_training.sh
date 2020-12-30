@@ -1,0 +1,11 @@
+gcloud ai-platform jobs submit training sw_deep_learning_training_3 \
+    --staging-bucket=gs://slalom-stl-kaggle-datasets \
+    --job-dir=gs://slalom-stl-kaggle-datasets/fake-comments  \
+    --package-path=src/trainer \
+    --module-name=trainer.task \
+    --region=us-central1 \
+    --runtime-version='2.3' \
+    --python-version='3.7' \
+    -- \
+    --glove_path=gs://slalom-stl-kaggle-datasets/fake-comments/glove.6B.100d.txt \
+    --output_path=gs://slalom-stl-kaggle-datasets/fake-comments/results
