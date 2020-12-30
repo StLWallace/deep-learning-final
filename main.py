@@ -2,7 +2,9 @@ import pandas as pd
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from keras.preprocessing.sequence import pad_sequences
 from keras.preprocessing.text import Tokenizer
-from keras.layers import Embedding
+from keras.layers import Embedding, LSTM, SimpleRNN, Dense, Dropout
+from keras.models import Sequential
+from keras.metrics import AUC
 import os
 import numpy as np
 
@@ -122,6 +124,41 @@ class MakeGlove():
             trainable=False)
         return embedding_layer
 
+    
+## Use this class to fit a model using Kfold cross validation
+class FitModel():
+    
+    def __init__(self, model, X_train, y_train, X_test, y_test):
+        self.kf = StratifiedKFold(n_splits=6)
+        self.results = []
+        self.X_train = X_train
+        self.y_train = y_train
+        self.X_test = X_test
+        self.y_test = y_test
+        self.model = model
+        
+    def fit_model(self, model, X_train, y_train, X_val, y_val, batch_size=64):
+        history = model.fit(
+            X_train, 
+            y_train,
+            epochs=10,
+            batch_size=batch_size,
+            validation_data=(X_val, y_val))
+
+        return history
+    
+    def k_fold_cv(self):
+        model = self.model
+        for train_index, test_index in kf.split(self.X_train, self.y_train):
+            Xt = self.X_train[train_index]
+            yt = self.y_train[train_index]
+            Xv = self.X_train[test_index]
+            yv = self.y_train[test_index]
+            res = self.fit_model(model, Xt, yt, Xv, yv)
+            self.results.append(res)        
+        return self
+
+## Run the whole thing
 def process():
     ## Initialize ModelData object
     md = ModelData(df_path=DF_PATH).split_data().get_tokenizer()
@@ -134,8 +171,15 @@ def process():
     glove = MakeGlove(glove_path=GLOVE_PATH, word_index=word_index).get_embedding_layer()
 
 
-kf = StratifiedKFold(n_splits=6)
+model = Sequential()
+model.add(glove)
+#model.add(Embedding(MAX_NB_WORDS, 64, input_length=MAX_SEQUENCE_LENGTH))
+model.add(LSTM(32,dropout=0.2,recurrent_dropout=0.2))
+model.add(Dense(1))
+model.compile(
+    loss='binary_crossentropy',
+    optimizer='adamax',
+    metrics=['acc'])
 
-for train_index, test_index in kf.split(X_train, y_train):
-    print("TRAIN:", train_index, "TEST:", test_index)
-
+mod_res = FitModel(model, X_train, y_train, X_test, y_test)
+mod_res.k_fold_cv()
