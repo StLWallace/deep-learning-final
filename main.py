@@ -8,10 +8,15 @@ from keras.metrics import AUC
 import os
 import numpy as np
 
-# Global Constants
+"""
+Global Constants - set these to your values to run
+"""
+# This is the path to your local folder containing True.csv and Fake.csv
 DF_PATH = "gs://slalom-stl-kaggle-datasets/fake-comments"
+# Whatever you want these to be
 MAX_SEQUENCE_LENGTH = 1000
-MAX_NB_WORDS = 20000
+MAX_NB_WORDS = 1000
+# Path to your local (unzipped) glove.6B.100d.txt
 GLOVE_PATH = "/home/jupyter/final/glove/glove.6B.100d.txt"
 
 ## This class loads and
@@ -137,7 +142,7 @@ class FitModel():
         self.y_test = y_test
         self.model = model
         
-    def fit_model(self, model, X_train, y_train, X_val, y_val, batch_size=64):
+    def fit_model(self, model, X_train, y_train, X_val, y_val, batch_size=256):
         history = model.fit(
             X_train, 
             y_train,
@@ -147,8 +152,10 @@ class FitModel():
 
         return history
     
+    # Using 6-fold cross validation
     def k_fold_cv(self):
         model = self.model
+        kf = StratifiedKFold(n_splits=6)
         for train_index, test_index in kf.split(self.X_train, self.y_train):
             Xt = self.X_train[train_index]
             yt = self.y_train[train_index]
@@ -161,25 +168,34 @@ class FitModel():
 ## Run the whole thing
 def process():
     ## Initialize ModelData object
-    md = ModelData(df_path=DF_PATH).split_data().get_tokenizer()
+    md = ModelData(df_path=DF_PATH).split_data().get_tokenizer(max_nb_words=MAX_NB_WORDS)
     # Get datasets
     X_train, y_train, X_test, y_test = md.return_all_data()
+    print("Successfully loaded and transformed test and train data")
     # define word_index
     word_index = md.get_word_index()
+    print("word index created")
 
     ## Get GloVe embedding
     glove = MakeGlove(glove_path=GLOVE_PATH, word_index=word_index).get_embedding_layer()
+    print("GloVe embedding defined")
 
+    # This is the actual model you want to fit
+    # haven't made any automated way to iterate through architecture
+    model = Sequential()
+    model.add(glove)
+    #model.add(Embedding(MAX_NB_WORDS, 64, input_length=MAX_SEQUENCE_LENGTH))
+    model.add(LSTM(32,dropout=0.2,recurrent_dropout=0.2))
+    model.add(Dense(1))
+    model.compile(
+        loss='binary_crossentropy',
+        optimizer='adamax',
+        metrics=['acc'])
 
-model = Sequential()
-model.add(glove)
-#model.add(Embedding(MAX_NB_WORDS, 64, input_length=MAX_SEQUENCE_LENGTH))
-model.add(LSTM(32,dropout=0.2,recurrent_dropout=0.2))
-model.add(Dense(1))
-model.compile(
-    loss='binary_crossentropy',
-    optimizer='adamax',
-    metrics=['acc'])
+    mod_res = FitModel(model, X_train, y_train, X_test, y_test)
+    mod_res.k_fold_cv()
 
-mod_res = FitModel(model, X_train, y_train, X_test, y_test)
-mod_res.k_fold_cv()
+## For running from command line
+# Future: Add argparser
+if __name__ == "__main__":
+    process()
