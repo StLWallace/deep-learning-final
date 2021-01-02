@@ -27,13 +27,15 @@ strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy()
 Global Constants - set these to your values to run
 """
 # This is the path to your local folder containing True.csv and Fake.csv
+# I'm using a Google Cloud Storage location
 DF_PATH = "gs://slalom-stl-kaggle-datasets/fake-comments"
+# This is the location where the trained models will be output
 OUTPUT_PATH = "gs://slalom-stl-kaggle-datasets/fake-comments/results"
 # Whatever you want these to be
 MAX_SEQUENCE_LENGTH = 1000
 MAX_NB_WORDS = 1000
-# Path to your local (unzipped) glove.6B.100d.txt
-GLOVE_PATH = "/home/jupyter/final/glove/glove.6B.100d.txt"
+# Path to your (unzipped) glove.6B.100d.txt
+GLOVE_PATH = "gs://slalom-stl-kaggle-datasets/fake-comments/glove.6B.100d.txt"
 
 ## This class loads and cleans data
 class ModelData():
@@ -173,9 +175,9 @@ class FitModel():
         return history
     
     # Using 6-fold cross validation
-    def k_fold_cv(self):
+    def k_fold_cv(self, output_path=OUTPUT_PATH):
         model = self.model
-        kf = StratifiedKFold(n_splits=6)
+        kf = StratifiedKFold(n_splits=2)
         i = 1
         for train_index, test_index in kf.split(self.X_train, self.y_train):
             Xt = self.X_train[train_index]
@@ -185,6 +187,7 @@ class FitModel():
             res = self.fit_model(model, Xt, yt, Xv, yv)
             self.results.append(res)
             print("######## Fold #", i)
+            model.save(output_path+"/model_%s" %(i))
             i += 1
         return self
         
@@ -219,14 +222,8 @@ def process(glove_path=GLOVE_PATH, output_path=OUTPUT_PATH):
             metrics=['acc'])
 
     mod_res = FitModel(model, X_train, y_train, X_test, y_test)
-    mod_res.k_fold_cv()
+    mod_res.k_fold_cv(output_path=output_path)
     
-    # Write to cloud storage
-    with file_io.FileIO(output_path, mode='rb') as f:
-        pickle.dump(mod_res.results, f, pickle.HIGHEST_PROTOCOL)
-    
-    with file_io.FileIO(output_path+"/model", mode='rb') as f2:
-        pickle.dump(mod_res.model, f2, pickle.HIGHEST_PROTOCOL)
 
 ## For running from command line
 if __name__ == "__main__":
