@@ -14,6 +14,9 @@ import pickle
 from tensorflow.python.lib.io import file_io
 from tensorflow.io.gfile import GFile
 import tensorflow as tf
+# This function will be used to import a Sequential with our chosen architecture
+# If you want to change this, modify the trainer.model module
+from trainer.model import get_model
 
 """ Trying to get TPU stuff to work. Maybe later
 resolver = tf.distribute.cluster_resolver.TPUClusterResolver()
@@ -33,7 +36,7 @@ DF_PATH = "gs://slalom-stl-kaggle-datasets/fake-comments"
 OUTPUT_PATH = "gs://slalom-stl-kaggle-datasets/fake-comments/results"
 # Whatever you want these to be
 MAX_SEQUENCE_LENGTH = 1000
-MAX_NB_WORDS = 1000
+MAX_NB_WORDS = 20000
 # Path to your (unzipped) glove.6B.100d.txt
 GLOVE_PATH = "gs://slalom-stl-kaggle-datasets/fake-comments/glove.6B.100d.txt"
 
@@ -177,7 +180,7 @@ class FitModel():
     # Using 6-fold cross validation
     def k_fold_cv(self, output_path=OUTPUT_PATH):
         model = self.model
-        kf = StratifiedKFold(n_splits=2)
+        kf = StratifiedKFold(n_splits=6)
         i = 1
         for train_index, test_index in kf.split(self.X_train, self.y_train):
             Xt = self.X_train[train_index]
@@ -205,21 +208,14 @@ def process(glove_path=GLOVE_PATH, output_path=OUTPUT_PATH):
     print("word index created")
 
     ## Get GloVe embedding
-    glove = MakeGlove(glove_path=glove_path, word_index=word_index).get_embedding_layer()
+    glove = MakeGlove(glove_path=glove_path, word_index=word_index, max_sequence_length=MAX_SEQUENCE_LENGTH).get_embedding_layer()
     print("GloVe embedding defined")
 
     # This is the actual model you want to fit
     # haven't made any automated way to iterate through architecture
     with strategy.scope():
-        model = Sequential()
-        model.add(glove)
-        #model.add(Embedding(MAX_NB_WORDS, 64, input_length=MAX_SEQUENCE_LENGTH))
-        model.add(LSTM(32,dropout=0.2,recurrent_dropout=0.2))
-        model.add(Dense(1))
-        model.compile(
-            loss='binary_crossentropy',
-            optimizer='adamax',
-            metrics=['acc'])
+        # get_model is imported from model.py and contains model architecture
+        model = get_model(glove_layer=glove, max_nb_words=MAX_NB_WORDS, max_sequence_length=MAX_SEQUENCE_LENGTH)
 
     mod_res = FitModel(model, X_train, y_train, X_test, y_test)
     mod_res.k_fold_cv(output_path=output_path)
