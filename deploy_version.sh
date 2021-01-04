@@ -1,5 +1,5 @@
-MODEL_DIR="gs://slalom-stl-kaggle-datasets/fake-comments/results/model_1/"
-VERSION_NAME="V1"
+MODEL_DIR="gs://slalom-stl-kaggle-datasets/fake-comments/results/model_6/"
+VERSION_NAME="V2"
 MODEL_NAME="sw_final_1"
 FRAMEWORK="TENSORFLOW"
 REGION="us-central1"

@@ -35,7 +35,7 @@ DF_PATH = "gs://slalom-stl-kaggle-datasets/fake-comments"
 # This is the location where the trained models will be output
 OUTPUT_PATH = "gs://slalom-stl-kaggle-datasets/fake-comments/results"
 # Whatever you want these to be
-MAX_SEQUENCE_LENGTH = 1000
+MAX_SEQUENCE_LENGTH = 100
 MAX_NB_WORDS = 20000
 # Path to your (unzipped) glove.6B.100d.txt
 GLOVE_PATH = "gs://slalom-stl-kaggle-datasets/fake-comments/glove.6B.100d.txt"

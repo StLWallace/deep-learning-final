@@ -19,7 +19,7 @@ def get_model(glove_layer=None, max_nb_words=10000, max_sequence_length=1000):
     model = Sequential()
     model.add(embedding_layer)
     model.add(LSTM(32, dropout=0.2, recurrent_dropout=0.2))
-    model.add(Dense(1, activation="softmax"))
+    model.add(Dense(1, activation="sigmoid"))
     model.compile(
         loss='binary_crossentropy',
         optimizer='adamax',
